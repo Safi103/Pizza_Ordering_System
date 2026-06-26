@@ -3,8 +3,8 @@ import cors from 'cors';
 import { MENU } from './menu.js';
 import { validateAndEnrich } from './validation.js';
 import { priceOrder } from './pricing.js';
-import { applyPersonalValidation } from './rules.js';
-import { createOrder, getOrder, listOrders } from './store.js';
+import { applyPersonalValidation, getActiveRule } from './rules.js';
+import { createOrder, getOrder, listOrders, updateStatus } from './store.js';
 
 
 const app = express();
@@ -75,6 +75,22 @@ app.get('/api/orders/:id', (req, res) => {
         return res.status(404).json({ error: `Order ${req.params.id} not found` });
     }
     res.status(200).json(order);
+});
+
+// --- PATCH /api/orders/:id/status ------------------------------------------
+// Body must contain a "status" field, e.g. { "status": "preparing" }.
+// 404 if the order is missing, 400 if the field/value is bad, 409 if the
+// transition is illegal.
+app.patch('/api/orders/:id/status', (req, res) => {
+    const target = req.body && req.body.status;
+    if (typeof target !== 'string') {
+        return res.status(400).json({ error: 'Body must contain a "status" string' });
+    }
+    const r = updateStatus(req.params.id, target);
+    if (!r.ok) {
+        return res.status(r.code).json({ error: r.error });
+    }
+    res.status(200).json(r.order);
 });
 
 const PORT = process.env.PORT || 3001; // use env. var. port if one is set or 3001
